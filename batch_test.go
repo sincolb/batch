@@ -171,7 +171,10 @@ func BenchmarkBatch(b *testing.B) {
 			Id:    "key#" + strconv.Itoa(rand.Intn(index)),
 			Value: rand.Intn(100),
 		}
-		batch.Submit(&data)
+		_, err := batch.Submit(&data)
+		if err != nil {
+			log.Println("submit err: ", err)
+		}
 	}
 	defer batch.Release()
 }
