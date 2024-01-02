@@ -19,9 +19,9 @@ for i := 0; i < b.N; i++ {
         Value: rand.Intn(100),
     }
     _, err := batch.Submit(&data)
-		if err != nil {
-			log.Println("submit err: ", err)
-		}
+    if err != nil {
+        log.Println("submit err: ", err)
+    }
 }
 ```
 OR
@@ -44,8 +44,8 @@ for i := 0; i < b.N; i++ {
         Value: rand.Intn(100),
     }
     _, err := batch.Submit(&data)
-		if err != nil {
-			log.Println("submit err: ", err)
-		}
+    if err != nil {
+        log.Println("submit err: ", err)
+    }
 }
 ```
