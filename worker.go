@@ -91,20 +91,13 @@ func (p *Worker) work(data []*Task) {
 	ctx, cancel := context.WithTimeoutCause(context.Background(), p.submitTimeOut, fmt.Errorf("timeout:%s", p.submitTimeOut))
 	defer cancel()
 
-	isBatch := false
 	switch p.Handle.(type) {
 	case HandleBatch:
-		isBatch = true
+		p.batch(ctx, data)
 	case HandleSingle:
+		p.single(ctx, data)
 	default:
 		logger.Errorf("an error occoured: invalid Handler %T\n", p.Handle)
-		return
-	}
-
-	if isBatch {
-		p.batch(ctx, data)
-	} else {
-		p.single(ctx, data)
 	}
 }
 
