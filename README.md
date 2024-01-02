@@ -6,21 +6,21 @@ defer batch.Release()
 
 index := 10
 handle := func(ctx context.Context, task []*Task) bool {
-    logger.Infof("[task] %v \n", task)
+    fmt.Printf("[task] %v \n", task)
     return true
 }
 for i := 0; i < index; i++ {
     batch.Register("key#"+strconv.Itoa(i), 10, time.Second, HandleBatch(handle))
 }
-for i := 0; i < b.N; i++ {
+for i := 0; i < index; i++ {
     data := Request{
         Ctx:   context.Background(),
         Id:    "key#" + strconv.Itoa(rand.Intn(index)),
-        Value: rand.Intn(100),
+        Value: rand.Int(),
     }
     _, err := batch.Submit(&data)
     if err != nil {
-        log.Println("submit err: ", err)
+        fmt.Println("submit err: ", err)
     }
 }
 ```
@@ -31,21 +31,21 @@ defer batch.Release()
 
 index := 10
 handle := func(ctx context.Context, task *Task) bool {
-    logger.Infof("[task] %v \n", task)
+    fmt.Printf("[task] %v \n", task)
     return true
 }
 for i := 0; i < index; i++ {
     batch.Register("key#"+strconv.Itoa(i), 10, time.Second, HandleSingle(handle))
 }
-for i := 0; i < b.N; i++ {
+for i := 0; i < index; i++ {
     data := Request{
         Ctx:   context.Background(),
         Id:    "key#" + strconv.Itoa(rand.Intn(index)),
-        Value: rand.Intn(100),
+        Value: rand.Int(),
     }
     _, err := batch.Submit(&data)
     if err != nil {
-        log.Println("submit err: ", err)
+        fmt.Println("submit err: ", err)
     }
 }
 ```

@@ -65,12 +65,14 @@ func (p *Worker) worker() {
 					data := make([]*Task, p.batchSize)
 					copy(data, work)
 					logger.Warnf("[%s] [timeout 1] %v\n", p.Key, data)
-					go p.work(data)
 					work = work[p.batchSize:]
+					go p.work(data)
 				} else {
-					logger.Warnf("[%s] [timeout 2] %v\n", p.Key, work)
-					go p.work(work)
+					data := make([]*Task, len(work))
+					copy(data, work)
+					logger.Warnf("[%s] [timeout 2] %v\n", p.Key, data)
 					work = make([]*Task, 0, p.batchSize)
+					go p.work(data)
 				}
 			}
 		case <-p.dispatch.exitC:
@@ -101,17 +103,8 @@ func (p *Worker) work(data []*Task) {
 
 	if isBatch {
 		p.batch(ctx, data)
-		return
-	}
-
-	for _, task := range data {
-		select {
-		case <-ctx.Done():
-			logger.Warnf("[%s] [error] %v [Cause] %v\n", p.Key, ctx.Err(), context.Cause(ctx))
-			task.signal(context.Cause(ctx))
-		default:
-			p.single(ctx, data)
-		}
+	} else {
+		p.single(ctx, data)
 	}
 }
 
