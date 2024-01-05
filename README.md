@@ -5,8 +5,8 @@ type myStruct struct {
     A int
     B string
 }
-batch := batchrequests.NewDispatch[myStruct]()
-defer batch.Release()
+process := batch.NewDispatch[myStruct]()
+defer process.Release()
 
 index := 10
 handle := func(ctx context.Context, payload []*myStruct) bool {
@@ -14,7 +14,7 @@ handle := func(ctx context.Context, payload []*myStruct) bool {
     return true
 }
 for i := 0; i < index; i++ {
-    batch.Register("key#"+strconv.Itoa(i), 10, time.Second, batchrequests.HandleBatch[myStruct](handle))
+    process.Register("key#"+strconv.Itoa(i), 10, time.Second, batch.HandleBatch[myStruct](handle))
 }
 var wg sync.WaitGroup
 wg.Add(index)
@@ -24,7 +24,7 @@ for i := 0; i < index; i++ {
 
         key := "key#" + strconv.Itoa(rand.Intn(index))
         value := myStruct{A: rand.Int(), B: strconv.Itoa(i)}
-        task, err := batch.Submit(key, value)
+        task, err := process.Submit(key, value)
         if err != nil {
             fmt.Println("submit err: ", err)
             return
@@ -44,8 +44,8 @@ type myStruct struct {
     A int
     B string
 }
-batch := batchrequests.NewDispatch[myStruct]()
-defer batch.Release()
+process := batch.NewDispatch[myStruct]()
+defer process.Release()
 
 index := 10
 handle := func(ctx context.Context, payload *myStruct) bool {
@@ -53,7 +53,7 @@ handle := func(ctx context.Context, payload *myStruct) bool {
     return true
 }
 for i := 0; i < index; i++ {
-    batch.Register("key#"+strconv.Itoa(i), 10, time.Second, batchrequests.HandleSingle[myStruct](handle))
+    process.Register("key#"+strconv.Itoa(i), 10, time.Second, batch.HandleSingle[myStruct](handle))
 }
 var wg sync.WaitGroup
 wg.Add(index)
@@ -63,7 +63,7 @@ for i := 0; i < index; i++ {
 
         key := "key#" + strconv.Itoa(rand.Intn(index))
         value := myStruct{A: rand.Int(), B: strconv.Itoa(i)}
-        task, err := batch.Submit(key, value)
+        task, err := process.Submit(key, value)
         if err != nil {
             fmt.Println("submit err: ", err)
             return

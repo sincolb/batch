@@ -1,4 +1,4 @@
-package batchrequests
+package batch
 
 import (
 	"bytes"
