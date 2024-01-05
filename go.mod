@@ -1,4 +1,4 @@
-module batch
+module github.com/sincolb/batch
 
 go 1.21
 
