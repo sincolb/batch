@@ -8,7 +8,7 @@ import (
 
 var DefaultDispatch = NewDispatch[any]()
 
-func Register(uniqID string, batchSize int, AutoCommitDuration time.Duration,
+func Register(uniqID any, batchSize int, AutoCommitDuration time.Duration,
 	handle Handler[any], opts ...Option[any]) error {
 	return DefaultDispatch.Register(uniqID, batchSize, AutoCommitDuration, handle, opts...)
 }

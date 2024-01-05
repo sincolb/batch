@@ -33,7 +33,3 @@ func (handle HandleBatch[T]) Handle(ctx context.Context, _ *T, tasks []*T) bool 
 
 	return handle(ctx, tasks)
 }
-
-var _ Handler[any] = HandleSingle[any](nil)
-
-var _ Handler[any] = HandleBatch[any](nil)
