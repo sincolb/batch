@@ -18,20 +18,20 @@ func WithRetrys[T any](retrys int) Option[T] {
 	})
 }
 
-func WithSubmitTimeOut[T any](duration time.Duration) Option[T] {
+func WithBatchTimeOut[T any](duration time.Duration) Option[T] {
 	return optionFunc[T](func(worker *Worker[T]) {
-		worker.submitTimeOut = duration
+		worker.batchTimeOut = duration
+	})
+}
+
+func WithGraceDwonDuration[T any](duration time.Duration) Option[T] {
+	return optionFunc[T](func(worker *Worker[T]) {
+		worker.graceDwonDuration = duration
 	})
 }
 
 func WithAutoCommitTimeOut[T any](duration time.Duration) Option[T] {
 	return optionFunc[T](func(worker *Worker[T]) {
 		worker.autoCommitDuration = duration
-	})
-}
-
-func WithAGraceDwonDuration[T any](duration time.Duration) Option[T] {
-	return optionFunc[T](func(worker *Worker[T]) {
-		worker.graceDwonDuration = duration
 	})
 }

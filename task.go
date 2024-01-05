@@ -27,10 +27,6 @@ func (task *Task[T]) Key() string {
 	return fmt.Sprintf("%v", task.Id)
 }
 
-func (task *Task[T]) Context() context.Context {
-	return task.ctx
-}
-
 func (task *Task[T]) Wait() error {
 	task.mu.Lock()
 	task.cond.Wait()

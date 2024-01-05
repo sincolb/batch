@@ -51,7 +51,7 @@ func (d *dispatch[T]) Register(uniqID any, batchSize int, AutoCommitDuration tim
 		bufferSize:         1000,
 		Retrys:             3,
 		Handle:             handle,
-		submitTimeOut:      3000 * time.Millisecond,
+		batchTimeOut:       3000 * time.Millisecond,
 		autoCommitDuration: AutoCommitDuration,
 		graceDwonDuration:  3 * time.Second,
 		exit:               make(chan struct{}),
@@ -101,7 +101,7 @@ func (d *dispatch[T]) SubmitWithContext(ctx context.Context, key any, value T) (
 
 func (d *dispatch[T]) submit(ctx context.Context, key any, value T) (*Task[T], error) {
 	task := &Task[T]{
-		ctx:   context.Background(),
+		ctx:   ctx,
 		Id:    key,
 		Value: value,
 	}

@@ -17,7 +17,7 @@ type Worker[T any] struct {
 	// Handle             any
 	Handle             Handler[T]
 	taskC              chan *Task[T]
-	submitTimeOut      time.Duration
+	batchTimeOut       time.Duration
 	graceDwonDuration  time.Duration
 	autoCommitDuration time.Duration
 	exit               chan struct{}
@@ -82,7 +82,7 @@ func (p *Worker[T]) worker() {
 }
 
 func (p *Worker[T]) work(data []*Task[T]) {
-	ctx, cancel := context.WithTimeoutCause(context.Background(), p.submitTimeOut, fmt.Errorf("timeout:%s", p.submitTimeOut))
+	ctx, cancel := context.WithTimeoutCause(context.Background(), p.batchTimeOut, fmt.Errorf("timeout:%s", p.batchTimeOut))
 	defer cancel()
 
 	switch p.Handle.(type) {
