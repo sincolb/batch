@@ -2,36 +2,36 @@ package batchrequests
 
 import "time"
 
-type Option interface {
-	apply(*Worker)
+type Option[T any] interface {
+	apply(*Worker[T])
 }
 
-type optionFunc func(*Worker)
+type optionFunc[T any] func(*Worker[T])
 
-func (f optionFunc) apply(worker *Worker) {
+func (f optionFunc[T]) apply(worker *Worker[T]) {
 	f(worker)
 }
 
-func WithRetrys(retrys int) Option {
-	return optionFunc(func(worker *Worker) {
+func WithRetrys[T any](retrys int) Option[T] {
+	return optionFunc[T](func(worker *Worker[T]) {
 		worker.Retrys = retrys
 	})
 }
 
-func WithSubmitTimeOut(duration time.Duration) Option {
-	return optionFunc(func(worker *Worker) {
+func WithSubmitTimeOut[T any](duration time.Duration) Option[T] {
+	return optionFunc[T](func(worker *Worker[T]) {
 		worker.submitTimeOut = duration
 	})
 }
 
-func WithAutoCommitTimeOut(duration time.Duration) Option {
-	return optionFunc(func(worker *Worker) {
+func WithAutoCommitTimeOut[T any](duration time.Duration) Option[T] {
+	return optionFunc[T](func(worker *Worker[T]) {
 		worker.autoCommitDuration = duration
 	})
 }
 
-func WithAGraceDwonDuration(duration time.Duration) Option {
-	return optionFunc(func(worker *Worker) {
+func WithAGraceDwonDuration[T any](duration time.Duration) Option[T] {
+	return optionFunc[T](func(worker *Worker[T]) {
 		worker.graceDwonDuration = duration
 	})
 }

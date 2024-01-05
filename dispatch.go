@@ -7,32 +7,32 @@ import (
 	"time"
 )
 
-type dispatch struct {
+type dispatch[T any] struct {
 	pool  sync.Map
 	exitC chan struct{}
 }
 
-func NewDispatch() *dispatch {
-	d := &dispatch{
+func NewDispatch[T any]() *dispatch[T] {
+	d := &dispatch[T]{
 		exitC: make(chan struct{}),
 	}
 
 	return d
 }
 
-func (d *dispatch) Get(uniqID any) (*Worker, bool) {
+func (d *dispatch[T]) Get(uniqID any) (*Worker[T], bool) {
 	value, ok := d.pool.Load(uniqID)
 	if !ok {
 		return nil, false
 	}
-	if work, ok := value.(*Worker); ok {
+	if work, ok := value.(*Worker[T]); ok {
 		return work, true
 	}
 	return nil, false
 }
 
-func (d *dispatch) Register(uniqID any, batchSize int, AutoCommitDuration time.Duration,
-	handle Handler, opts ...Option) error {
+func (d *dispatch[T]) Register(uniqID any, batchSize int, AutoCommitDuration time.Duration,
+	handle Handler[T], opts ...Option[T]) error {
 	// switch handle.(type) {
 	// case Handler[*Task], Handler[[]*Task]:
 	// default:
@@ -43,7 +43,7 @@ func (d *dispatch) Register(uniqID any, batchSize int, AutoCommitDuration time.D
 		return DuplicateUniqId{uniqID}
 	}
 
-	work := &Worker{
+	work := &Worker[T]{
 		Key:                uniqID,
 		dispatch:           d,
 		batchSize:          batchSize,
@@ -58,7 +58,7 @@ func (d *dispatch) Register(uniqID any, batchSize int, AutoCommitDuration time.D
 	for _, opt := range opts {
 		opt.apply(work)
 	}
-	work.taskC = make(chan *Task, work.bufferSize)
+	work.taskC = make(chan *Task[T], work.bufferSize)
 	d.pool.Store(uniqID, work)
 
 	go work.worker()
@@ -66,20 +66,20 @@ func (d *dispatch) Register(uniqID any, batchSize int, AutoCommitDuration time.D
 	return nil
 }
 
-func (d *dispatch) Unregister(uniqID any) {
+func (d *dispatch[T]) Unregister(uniqID any) {
 	value, b := d.pool.Load(uniqID)
 	if !b {
 		return
 	}
 
-	work := value.(*Worker)
+	work := value.(*Worker[T])
 	work.stop()
 	d.pool.Delete(uniqID)
 }
 
-func (d *dispatch) UnregisterAll() {
+func (d *dispatch[T]) UnregisterAll() {
 	d.pool.Range(func(key, value any) bool {
-		if work, ok := value.(*Worker); ok {
+		if work, ok := value.(*Worker[T]); ok {
 			work.stop()
 			d.pool.Delete(key)
 		}
@@ -88,7 +88,7 @@ func (d *dispatch) UnregisterAll() {
 	})
 }
 
-func (d *dispatch) Submit(req *Request) (*Task, error) {
+func (d *dispatch[T]) Submit(req *Request[T]) (*Task[T], error) {
 	task := NewTask(req)
 
 	select {
@@ -132,13 +132,13 @@ func (d *dispatch) Submit(req *Request) (*Task, error) {
 	}
 }
 
-func (d *dispatch) Release() {
+func (d *dispatch[T]) Release() {
 	d.UnregisterAll()
 	close(d.exitC)
 	logger.Debugln("close end-------------")
 }
 
-func (d *dispatch) Exit() <-chan struct{} {
+func (d *dispatch[T]) Exit() <-chan struct{} {
 
 	return d.exitC
 }

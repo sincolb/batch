@@ -14,17 +14,17 @@ func (e DuplicateUniqId) Error() string {
 	return fmt.Sprintf("duplicate uniqID: %s", e.msg.(string))
 }
 
-type Task struct {
+type Task[T any] struct {
 	ctx   context.Context
 	Id    string
-	Value any
+	Value T
 	mu    sync.Mutex
 	cond  *sync.Cond
 	err   error
 }
 
-func NewTask(req *Request) *Task {
-	task := &Task{
+func NewTask[T any](req *Request[T]) *Task[T] {
+	task := &Task[T]{
 		ctx:   req.Ctx,
 		Id:    req.Id,
 		Value: req.Value,
@@ -34,25 +34,38 @@ func NewTask(req *Request) *Task {
 	return task
 }
 
-func (task *Task) Result() (any, error) {
+type TaskIface interface {
+	Result() (any, error)
+	Context() context.Context
+	Key() string
+}
+
+func (task *Task[T]) Key() string {
+	return task.Id
+}
+func (task *Task[T]) Context() context.Context {
+	return task.ctx
+}
+
+func (task *Task[T]) Result() error {
 	task.mu.Lock()
 	task.cond.Wait()
 	task.mu.Unlock()
 
 	if task.err != nil {
 		logger.Debugf("in the end, Error: %v\n", task.err)
-		return nil, task.err
+		return task.err
 	}
 	if e := context.Cause(task.ctx); e != nil {
 		task.err = e
 		logger.Debugf("Cause, Error: %v\n", e)
-		return nil, e
+		return e
 	}
 
-	return nil, nil
+	return nil
 }
 
-func (task *Task) signal(err error) {
+func (task *Task[T]) signal(err error) {
 	task.mu.Lock()
 	defer task.mu.Unlock()
 

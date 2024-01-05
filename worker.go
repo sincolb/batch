@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-type Worker struct {
-	dispatch   *dispatch
+type Worker[T any] struct {
+	dispatch   *dispatch[T]
 	Key        any
 	batchSize  int
 	bufferSize int
 	Retrys     int
 	// Handle             any
-	Handle             Handler
-	taskC              chan *Task
+	Handle             Handler[T]
+	taskC              chan *Task[T]
 	submitTimeOut      time.Duration
 	graceDwonDuration  time.Duration
 	autoCommitDuration time.Duration
@@ -24,16 +24,17 @@ type Worker struct {
 	_closed            uint32
 }
 
-func (p *Worker) UniqID() any {
+func (p *Worker[T]) UniqID() any {
 	return p.Key
 }
 
-func (p *Worker) worker() {
+func (p *Worker[T]) worker() {
 	logger.Infof("listen the key = %s", p.Key)
 	timer := time.NewTimer(p.autoCommitDuration)
 	defer timer.Stop()
 
-	work := make([]*Task, 0, p.batchSize)
+	// p.taskC = make(chan *Task[T], p.bufferSize)
+	work := make([]*Task[T], 0, p.batchSize)
 	defer func() {
 		for s, i := len(work), 0; s > 0 && i < len(work); i++ {
 			if work[i].err == nil {
@@ -53,7 +54,7 @@ func (p *Worker) worker() {
 			work = append(work, v)
 			if len(work) >= p.batchSize {
 				timer.Reset(p.autoCommitDuration)
-				data := make([]*Task, p.batchSize)
+				data := make([]*Task[T], p.batchSize)
 				copy(data, work)
 				work = work[p.batchSize:]
 				go p.work(data)
@@ -62,16 +63,16 @@ func (p *Worker) worker() {
 			timer.Reset(p.autoCommitDuration)
 			if len(work) > 0 {
 				if len(work) >= p.batchSize {
-					data := make([]*Task, p.batchSize)
+					data := make([]*Task[T], p.batchSize)
 					copy(data, work)
 					logger.Warnf("[%s] [timeout 1] %v\n", p.Key, data)
 					work = work[p.batchSize:]
 					go p.work(data)
 				} else {
-					data := make([]*Task, len(work))
+					data := make([]*Task[T], len(work))
 					copy(data, work)
 					logger.Warnf("[%s] [timeout 2] %v\n", p.Key, data)
-					work = make([]*Task, 0, p.batchSize)
+					work = make([]*Task[T], 0, p.batchSize)
 					go p.work(data)
 				}
 			}
@@ -87,21 +88,21 @@ func (p *Worker) worker() {
 	}
 }
 
-func (p *Worker) work(data []*Task) {
+func (p *Worker[T]) work(data []*Task[T]) {
 	ctx, cancel := context.WithTimeoutCause(context.Background(), p.submitTimeOut, fmt.Errorf("timeout:%s", p.submitTimeOut))
 	defer cancel()
 
 	switch p.Handle.(type) {
-	case HandleBatch:
+	case HandleBatch[T]:
 		p.batch(ctx, data)
-	case HandleSingle:
+	case HandleSingle[T]:
 		p.single(ctx, data)
 	default:
 		logger.Errorf("an error occoured: invalid Handler %T\n", p.Handle)
 	}
 }
 
-func (p *Worker) batch(ctx context.Context, data []*Task) {
+func (p *Worker[T]) batch(ctx context.Context, data []*Task[T]) {
 	retrys := 0
 OutLoop:
 	for {
@@ -130,7 +131,7 @@ OutLoop:
 	}
 }
 
-func (p *Worker) single(ctx context.Context, data []*Task) error {
+func (p *Worker[T]) single(ctx context.Context, data []*Task[T]) error {
 	for _, item := range data {
 		if item == nil {
 			break
@@ -164,29 +165,26 @@ func (p *Worker) single(ctx context.Context, data []*Task) error {
 	return nil
 }
 
-func (p *Worker) broadcast(err error, data ...*Task) {
+func (p *Worker[T]) broadcast(err error, data ...*Task[T]) {
 	for _, task := range data {
 		task.signal(err)
 	}
 }
 
-func (p *Worker) shutdown() {
+func (p *Worker[T]) shutdown() {
 	close(p.taskC)
 	if p.graceDwonDuration > 0 && len(p.taskC) > 0 {
 		time.Sleep(p.graceDwonDuration)
 	}
 }
 
-func (p *Worker) stop() {
+func (p *Worker[T]) stop() {
 	if !atomic.CompareAndSwapUint32(&p._closed, 0, 1) {
-
 		return
 	}
-
 	close(p.exit)
 }
 
-func (p *Worker) closed() bool {
-
+func (p *Worker[T]) closed() bool {
 	return atomic.LoadUint32(&p._closed) == 1
 }

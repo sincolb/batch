@@ -10,7 +10,7 @@ import (
 )
 
 var logger = logrus.New()
-var DefaultDispatch = NewDispatch()
+var DefaultDispatch = NewDispatch[any]()
 
 func init() {
 	logger.Formatter = new(logrus.TextFormatter) //default
@@ -21,14 +21,14 @@ func init() {
 	logger.Out = os.Stdout
 }
 
-type Request struct {
+type Request[T any] struct {
 	Id    string
-	Value any
+	Value T
 	Ctx   context.Context
 }
 
-func NewRequest(id string, value any) *Request {
-	req := &Request{
+func NewRequest[T any](id string, value T) *Request[T] {
+	req := &Request[T]{
 		Ctx:   context.Background(),
 		Id:    id,
 		Value: value,
@@ -36,8 +36,8 @@ func NewRequest(id string, value any) *Request {
 	return req
 }
 
-func NewRequestWithContext(ctx context.Context, id string, value any) *Request {
-	req := &Request{
+func NewRequestWithContext[T any](ctx context.Context, id string, value T) *Request[T] {
+	req := &Request[T]{
 		Ctx:   ctx,
 		Id:    id,
 		Value: value,
@@ -46,7 +46,7 @@ func NewRequestWithContext(ctx context.Context, id string, value any) *Request {
 }
 
 func Register(uniqID any, batchSize int, AutoCommitDuration time.Duration,
-	handle Handler, opts ...Option) error {
+	handle Handler[any], opts ...Option[any]) error {
 	return DefaultDispatch.Register(uniqID, batchSize, AutoCommitDuration, handle, opts...)
 }
 
@@ -58,7 +58,7 @@ func UnregisterAll() {
 	DefaultDispatch.UnregisterAll()
 }
 
-func Submit(req *Request) {
+func Submit(req *Request[any]) {
 	DefaultDispatch.Submit(req)
 }
 

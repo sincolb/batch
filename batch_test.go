@@ -17,9 +17,14 @@ import (
 	"go.uber.org/goleak"
 )
 
-func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch) *httptest.Server {
+type myStruct struct {
+	w http.ResponseWriter
+	r *http.Request
+}
+
+func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch[myStruct]) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req := &Request{}
+		req := &Request[myStruct]{}
 		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 			log.Println("err = ", err)
 			return
@@ -28,10 +33,7 @@ func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch) *httptest.Server {
 		defer cancel()
 		// req.Ctx = r.Context()
 		req.Ctx = ctx
-		req.Value = struct {
-			w http.ResponseWriter
-			r *http.Request
-		}{
+		req.Value = myStruct{
 			w: w,
 			r: r,
 		}
@@ -40,7 +42,7 @@ func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch) *httptest.Server {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		if _, err := task.Result(); err != nil {
+		if err := task.Result(); err != nil {
 			w.Write([]byte(err.Error()))
 		}
 		wg.Done()
@@ -50,13 +52,10 @@ func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch) *httptest.Server {
 
 func sendRequest(ser *httptest.Server, max int) {
 	for i := 0; i < 10; i++ {
-		i := i
 		go func() {
-			payload, _ := json.Marshal(Request{
-				Id:    "key#" + strconv.Itoa(rand.Intn(max)),
-				Value: rand.Intn(i + 1),
+			payload, _ := json.Marshal(map[string]any{
+				"Id": "key#" + strconv.Itoa(rand.Intn(max)),
 			})
-
 			res, err := ser.Client().Post(ser.URL, "application/json; charset=UTF-8", bytes.NewReader(payload))
 			if err != nil {
 				log.Fatal(err)
@@ -79,19 +78,15 @@ func sendRequest(ser *httptest.Server, max int) {
 func TestSingle(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	batch := NewDispatch()
+	batch := NewDispatch[myStruct]()
 	defer batch.Release()
 
 	max := 5
 	wg := &sync.WaitGroup{}
 	for i := 0; i < max; i++ {
 		i := i
-		handle := func(ctx context.Context, task *Task) bool {
-			payload := task.Value.(struct {
-				w http.ResponseWriter
-				r *http.Request
-			})
-			_, err := payload.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + task.Id))
+		handle := func(ctx context.Context, task *Task[myStruct]) bool {
+			_, err := task.Value.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + task.Id))
 			if err != nil {
 				log.Println("write error: ", err)
 			}
@@ -99,7 +94,7 @@ func TestSingle(t *testing.T) {
 			// log.Printf("%p\n", payload.w)
 			return true
 		}
-		batch.Register("key#"+strconv.Itoa(i), 3, time.Millisecond*3000, HandleSingle(handle))
+		batch.Register("key#"+strconv.Itoa(i), 3, time.Millisecond*3000, HandleSingle[myStruct](handle))
 	}
 
 	ts := getHttpTestServer(wg, batch)
@@ -114,27 +109,23 @@ func TestBatch(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	max := 5
-	batch := NewDispatch()
+	batch := NewDispatch[myStruct]()
 	defer batch.Release()
 
 	wg := &sync.WaitGroup{}
 
 	for i := 0; i < max; i++ {
 		i := i
-		handle := func(ctx context.Context, task []*Task) bool {
+		handle := func(ctx context.Context, task []*Task[myStruct]) bool {
 			for _, item := range task {
-				payload := item.Value.(struct {
-					w http.ResponseWriter
-					r *http.Request
-				})
-				_, err := payload.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + item.Id))
+				_, err := item.Value.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + item.Id))
 				if err != nil {
 					log.Println("write error: ", err)
 				}
 			}
 			return true
 		}
-		batch.Register("key#"+strconv.Itoa(i), 3, time.Millisecond*2000, HandleBatch(handle))
+		batch.Register("key#"+strconv.Itoa(i), 3, time.Millisecond*2000, HandleBatch[myStruct](handle))
 	}
 
 	ts := getHttpTestServer(wg, batch)
@@ -148,10 +139,10 @@ func TestBatch(t *testing.T) {
 func BenchmarkBatch(b *testing.B) {
 	b.ReportAllocs()
 	b.StopTimer()
-	batch := NewDispatch()
+	batch := NewDispatch[any]()
 
 	index := 10
-	handle := func(ctx context.Context, task []*Task) bool {
+	handle := func(ctx context.Context, task []*Task[any]) bool {
 		// time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 		// if rand.Intn(10)%3 == 0 {
 		logger.Infof("[task] %v \n", task)
@@ -161,12 +152,12 @@ func BenchmarkBatch(b *testing.B) {
 		// return false
 	}
 	for i := 0; i < index; i++ {
-		batch.Register("key#"+strconv.Itoa(i), 10, time.Second, HandleBatch(handle))
+		batch.Register("key#"+strconv.Itoa(i), 10, time.Second, HandleBatch[any](handle))
 	}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		data := Request{
+		data := Request[any]{
 			Ctx:   context.Background(),
 			Id:    "key#" + strconv.Itoa(rand.Intn(index)),
 			Value: rand.Intn(100),
