@@ -32,7 +32,7 @@ func (d *dispatch[T]) Get(uniqID any) (*Worker[T], bool) {
 	return nil, false
 }
 
-func (d *dispatch[T]) Register(uniqID any, batchSize int, AutoCommitDuration time.Duration,
+func (d *dispatch[T]) Register(uniqID string, batchSize int, AutoCommitDuration time.Duration,
 	handle Handler[T], opts ...Option[T]) error {
 	// switch handle.(type) {
 	// case Handler[*Task], Handler[[]*Task]:
