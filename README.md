@@ -19,14 +19,12 @@ for i := 0; i < index; i++ {
 var wg sync.WaitGroup
 wg.Add(index)
 for i := 0; i < index; i++ {
-    data := batchrequests.Request[myStruct]{
-        Ctx:   context.Background(),
-        Id:    "key#" + strconv.Itoa(rand.Intn(index)),
-        Value: myStruct{A: rand.Int(), B: strconv.Itoa(i)},
-    }
-    go func() {
+    go func(i int) {
         defer wg.Done()
-        task, err := batch.Submit(&data)
+
+        key := "key#" + strconv.Itoa(rand.Intn(index))
+        value := myStruct{A: rand.Int(), B: strconv.Itoa(i)}
+        task, err := batch.Submit(key, value)
         if err != nil {
             fmt.Println("submit err: ", err)
             return
@@ -36,7 +34,7 @@ for i := 0; i < index; i++ {
             fmt.Println(err)
             return
         }
-    }()
+    }(i)
 }
 wg.Wait()
 ```
@@ -60,14 +58,12 @@ for i := 0; i < index; i++ {
 var wg sync.WaitGroup
 wg.Add(index)
 for i := 0; i < index; i++ {
-    data := batchrequests.Request[myStruct]{
-        Ctx:   context.Background(),
-        Id:    "key#" + strconv.Itoa(rand.Intn(index)),
-        Value: myStruct{A: rand.Int(), B: strconv.Itoa(i)},
-    }
-    go func() {
+    go func(i int) {
         defer wg.Done()
-        task, err := batch.Submit(&data)
+
+        key := "key#" + strconv.Itoa(rand.Intn(index))
+        value := myStruct{A: rand.Int(), B: strconv.Itoa(i)}
+        task, err := batch.Submit(key, value)
         if err != nil {
             fmt.Println("submit err: ", err)
             return
@@ -77,7 +73,7 @@ for i := 0; i < index; i++ {
             fmt.Println(err)
             return
         }
-    }()
+    }(i)
 }
 wg.Wait()
 ```

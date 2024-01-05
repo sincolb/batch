@@ -1,6 +1,7 @@
 package batchrequests
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -88,8 +89,23 @@ func (d *dispatch[T]) UnregisterAll() {
 	})
 }
 
-func (d *dispatch[T]) Submit(req *Request[T]) (*Task[T], error) {
-	task := NewTask(req)
+func (d *dispatch[T]) Submit(key string, value T) (*Task[T], error) {
+
+	return d.submit(context.Background(), key, value)
+}
+
+func (d *dispatch[T]) SubmitWithContext(ctx context.Context, key any, value T) (*Task[T], error) {
+
+	return d.submit(ctx, key, value)
+}
+
+func (d *dispatch[T]) submit(ctx context.Context, key any, value T) (*Task[T], error) {
+	task := &Task[T]{
+		ctx:   context.Background(),
+		Id:    key,
+		Value: value,
+	}
+	task.cond = sync.NewCond(&task.mu)
 
 	select {
 	case <-d.exitC:

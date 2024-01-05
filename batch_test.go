@@ -24,20 +24,19 @@ type myStruct struct {
 
 func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch[myStruct]) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req := &Request[myStruct]{}
-		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		req := make(map[string]string)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Println("err = ", err)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*5000)
 		defer cancel()
 		// req.Ctx = r.Context()
-		req.Ctx = ctx
-		req.Value = myStruct{
+		value := myStruct{
 			w: w,
 			r: r,
 		}
-		task, err := batch.Submit(req)
+		task, err := batch.SubmitWithContext(ctx, req["Id"], value)
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return
@@ -53,7 +52,7 @@ func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch[myStruct]) *httptest.
 func sendRequest(ser *httptest.Server, max int) {
 	for i := 0; i < 10; i++ {
 		go func() {
-			payload, _ := json.Marshal(map[string]any{
+			payload, _ := json.Marshal(map[string]string{
 				"Id": "key#" + strconv.Itoa(rand.Intn(max)),
 			})
 			res, err := ser.Client().Post(ser.URL, "application/json; charset=UTF-8", bytes.NewReader(payload))
@@ -155,12 +154,9 @@ func BenchmarkBatch(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		data := Request[any]{
-			Ctx:   context.Background(),
-			Id:    "key#" + strconv.Itoa(rand.Intn(index)),
-			Value: rand.Intn(100),
-		}
-		_, err := batch.Submit(&data)
+		key := "key#" + strconv.Itoa(rand.Intn(index))
+		value := rand.Intn(100)
+		_, err := batch.Submit(key, value)
 		if err != nil {
 			log.Println("submit err: ", err)
 		}

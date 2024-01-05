@@ -16,27 +16,17 @@ func (e DuplicateUniqId) Error() string {
 
 type Task[T any] struct {
 	ctx   context.Context
-	Id    string
+	Id    any
 	Value T
 	mu    sync.Mutex
 	cond  *sync.Cond
 	err   error
 }
 
-func NewTask[T any](req *Request[T]) *Task[T] {
-	task := &Task[T]{
-		ctx:   req.Ctx,
-		Id:    req.Id,
-		Value: req.Value,
-	}
-	task.cond = sync.NewCond(&task.mu)
-
-	return task
-}
-
 func (task *Task[T]) Key() string {
-	return task.Id
+	return fmt.Sprintf("%v", task.Id)
 }
+
 func (task *Task[T]) Context() context.Context {
 	return task.ctx
 }
