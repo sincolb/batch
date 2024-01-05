@@ -34,12 +34,6 @@ func NewTask[T any](req *Request[T]) *Task[T] {
 	return task
 }
 
-type TaskIface interface {
-	Result() (any, error)
-	Context() context.Context
-	Key() string
-}
-
 func (task *Task[T]) Key() string {
 	return task.Id
 }
@@ -47,7 +41,7 @@ func (task *Task[T]) Context() context.Context {
 	return task.ctx
 }
 
-func (task *Task[T]) Result() error {
+func (task *Task[T]) Wait() error {
 	task.mu.Lock()
 	task.cond.Wait()
 	task.mu.Unlock()

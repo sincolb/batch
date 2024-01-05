@@ -31,7 +31,7 @@ for i := 0; i < index; i++ {
             fmt.Println("submit err: ", err)
             return
         }
-        err = task.Result()
+        err = task.Wait()
         if err != nil {
             fmt.Println(err)
             return
@@ -72,7 +72,7 @@ for i := 0; i < index; i++ {
             fmt.Println("submit err: ", err)
             return
         }
-        err = task.Result()
+        err = task.Wait()
         if err != nil {
             fmt.Println(err)
             return

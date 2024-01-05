@@ -42,7 +42,7 @@ func getHttpTestServer(wg *sync.WaitGroup, batch *dispatch[myStruct]) *httptest.
 			w.Write([]byte(err.Error()))
 			return
 		}
-		if err := task.Result(); err != nil {
+		if err := task.Wait(); err != nil {
 			w.Write([]byte(err.Error()))
 		}
 		wg.Done()
