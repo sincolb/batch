@@ -104,6 +104,10 @@ func (p *Worker[T]) work(data []*Task[T]) {
 
 func (p *Worker[T]) batch(ctx context.Context, data []*Task[T]) {
 	retrys := 0
+	payload := make([]*T, len(data))
+	for i, item := range data {
+		payload[i] = &item.Value
+	}
 OutLoop:
 	for {
 		select {
@@ -114,7 +118,7 @@ OutLoop:
 			break OutLoop
 		default:
 			if retrys < p.Retrys {
-				if p.Handle.Handle(ctx, nil, data) {
+				if p.Handle.Handle(ctx, nil, payload) {
 					p.broadcast(nil, data...)
 
 					break OutLoop
@@ -148,7 +152,7 @@ func (p *Worker[T]) single(ctx context.Context, data []*Task[T]) error {
 		OutLoop:
 			for {
 				if retrys < p.Retrys {
-					if p.Handle.Handle(ctx, item, nil) {
+					if p.Handle.Handle(ctx, &item.Value, nil) {
 						item.signal(nil)
 						break OutLoop
 					}

@@ -85,13 +85,11 @@ func TestSingle(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	for i := 0; i < max; i++ {
 		i := i
-		handle := func(ctx context.Context, task *Task[myStruct]) bool {
-			_, err := task.Value.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + task.Id))
+		handle := func(ctx context.Context, payload *myStruct) bool {
+			_, err := payload.w.Write([]byte(strconv.Itoa(i)))
 			if err != nil {
 				log.Println("write error: ", err)
 			}
-			// payload.w.Write([]byte{'\n', '\r'})
-			// log.Printf("%p\n", payload.w)
 			return true
 		}
 		batch.Register("key#"+strconv.Itoa(i), 3, time.Millisecond*3000, HandleSingle[myStruct](handle))
@@ -116,9 +114,9 @@ func TestBatch(t *testing.T) {
 
 	for i := 0; i < max; i++ {
 		i := i
-		handle := func(ctx context.Context, task []*Task[myStruct]) bool {
-			for _, item := range task {
-				_, err := item.Value.w.Write([]byte(strconv.Itoa(i) + "-surccess: " + item.Id))
+		handle := func(ctx context.Context, payload []*myStruct) bool {
+			for _, item := range payload {
+				_, err := item.w.Write([]byte(strconv.Itoa(i)))
 				if err != nil {
 					log.Println("write error: ", err)
 				}
@@ -142,7 +140,7 @@ func BenchmarkBatch(b *testing.B) {
 	batch := NewDispatch[any]()
 
 	index := 10
-	handle := func(ctx context.Context, task []*Task[any]) bool {
+	handle := func(ctx context.Context, task []*any) bool {
 		// time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 		// if rand.Intn(10)%3 == 0 {
 		logger.Infof("[task] %v \n", task)

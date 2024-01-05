@@ -17,19 +17,19 @@ import "context"
 // }
 
 type Handler[T any] interface {
-	Handle(context.Context, *Task[T], []*Task[T]) bool
+	Handle(context.Context, *T, []*T) bool
 }
 
-type HandleSingle[T any] func(context.Context, *Task[T]) bool
+type HandleSingle[T any] func(context.Context, *T) bool
 
-type HandleBatch[T any] func(context.Context, []*Task[T]) bool
+type HandleBatch[T any] func(context.Context, []*T) bool
 
-func (handle HandleSingle[T]) Handle(ctx context.Context, task *Task[T], _ []*Task[T]) bool {
+func (handle HandleSingle[T]) Handle(ctx context.Context, task *T, _ []*T) bool {
 
 	return handle(ctx, task)
 }
 
-func (handle HandleBatch[T]) Handle(ctx context.Context, _ *Task[T], tasks []*Task[T]) bool {
+func (handle HandleBatch[T]) Handle(ctx context.Context, _ *T, tasks []*T) bool {
 
 	return handle(ctx, tasks)
 }
