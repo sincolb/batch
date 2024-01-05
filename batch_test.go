@@ -143,10 +143,10 @@ func BenchmarkBatch(b *testing.B) {
 	handle := func(ctx context.Context, task []*any) bool {
 		// time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 		// if rand.Intn(10)%3 == 0 {
-		logger.Infof("[task] %v \n", task)
+		// log.Printf("[task] %v \n", len(task))
 		return true
 		// }
-		// logger.Tracef("[%s] \n", work.uniqID())
+		// log.Printf("[%s] \n", work.uniqID())
 		// return false
 	}
 	for i := 0; i < index; i++ {

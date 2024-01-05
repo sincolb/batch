@@ -2,24 +2,12 @@ package batchrequests
 
 import (
 	"context"
-	"os"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	_ "go.uber.org/automaxprocs"
 )
 
-var logger = logrus.New()
 var DefaultDispatch = NewDispatch[any]()
-
-func init() {
-	logger.Formatter = new(logrus.TextFormatter) //default
-	// logger.Formatter.(*logrus.TextFormatter).DisableColors = true    // remove colors
-	// logger.Formatter.(*logrus.TextFormatter).DisableTimestamp = true // remove timestamp from test output
-	// logger.Level = logrus.TraceLevel
-	logger.Level = logrus.WarnLevel
-	logger.Out = os.Stdout
-}
 
 type Request[T any] struct {
 	Id    string

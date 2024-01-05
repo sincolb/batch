@@ -47,12 +47,10 @@ func (task *Task[T]) Wait() error {
 	task.mu.Unlock()
 
 	if task.err != nil {
-		logger.Debugf("in the end, Error: %v\n", task.err)
 		return task.err
 	}
 	if e := context.Cause(task.ctx); e != nil {
 		task.err = e
-		logger.Debugf("Cause, Error: %v\n", e)
 		return e
 	}
 

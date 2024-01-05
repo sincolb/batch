@@ -93,23 +93,15 @@ func (d *dispatch[T]) Submit(req *Request[T]) (*Task[T], error) {
 
 	select {
 	case <-d.exitC:
-		logger.Debugln("ALL received exit 2")
-
 		return nil, errors.New("all received exit 2")
 	case <-task.ctx.Done():
-		logger.Debugln("context cancel 0, request=", task)
-
 		return nil, errors.New("context cancel 0")
 	default:
 		work, ok := d.Get(task.Id)
 		if !ok {
-			logger.Debugln("A not register key=", task.Id)
-
 			return nil, fmt.Errorf("a not register key=%s", task.Id)
 		}
 		if work.closed() {
-			logger.Debugf("A queue[%v] is closed\n", work.Key)
-
 			return nil, fmt.Errorf("a queue[%v] is closed", work.Key)
 		}
 
@@ -117,16 +109,10 @@ func (d *dispatch[T]) Submit(req *Request[T]) (*Task[T], error) {
 		case work.taskC <- task:
 			return task, nil
 		case <-work.exit:
-			logger.Debugf("work received exit %s", work.Key)
-
 			return nil, errors.New("work received exit")
 		case <-task.ctx.Done():
-			logger.Debugln("context cancel 3, request=", task)
-
 			return nil, errors.New("context cancel 3,")
 		case <-d.exitC:
-			logger.Debugln("ALL received exit 2")
-
 			return nil, errors.New("aLL received exit 2")
 		}
 	}
@@ -135,7 +121,6 @@ func (d *dispatch[T]) Submit(req *Request[T]) (*Task[T], error) {
 func (d *dispatch[T]) Release() {
 	d.UnregisterAll()
 	close(d.exitC)
-	logger.Debugln("close end-------------")
 }
 
 func (d *dispatch[T]) Exit() <-chan struct{} {
