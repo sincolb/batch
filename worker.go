@@ -2,13 +2,14 @@ package batch
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type Worker[T any] struct {
+	mu         sync.Mutex
 	dispatch   *dispatch[T]
 	Key        any
 	batchSize  int
@@ -36,7 +37,7 @@ func (p *Worker[T]) worker() {
 	defer func() {
 		for s, i := len(work), 0; s > 0 && i < len(work); i++ {
 			if work[i].err == nil {
-				work[i].signal(errors.New("canceled"))
+				work[i].signal(ErrWorkerShutdown)
 			}
 		}
 	}()
@@ -45,7 +46,7 @@ func (p *Worker[T]) worker() {
 		select {
 		case v := <-p.taskC:
 			if v.ctx.Err() != nil {
-				v.signal(errors.New("context cancel 2"))
+				v.signal(ErrWorkerContextCancel)
 				continue
 			}
 			work = append(work, v)
@@ -118,7 +119,7 @@ OutLoop:
 				retrys++
 				time.Sleep(10 * time.Millisecond)
 			} else {
-				p.broadcast(errors.New("exceed retrys"), data...)
+				p.broadcast(ErrExceedRetrys, data...)
 
 				break OutLoop
 			}
@@ -148,7 +149,7 @@ func (p *Worker[T]) single(ctx context.Context, data []*Task[T]) error {
 					retrys++
 					time.Sleep(10 * time.Millisecond)
 				} else {
-					item.signal(errors.New("exceed retrys"))
+					item.signal(ErrExceedRetrys)
 					break OutLoop
 				}
 			}

@@ -2,7 +2,6 @@ package batch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -26,8 +25,8 @@ func (d *dispatch[T]) Get(uniqID any) (*Worker[T], bool) {
 	if !ok {
 		return nil, false
 	}
-	if work, ok := value.(*Worker[T]); ok {
-		return work, true
+	if worker, ok := value.(*Worker[T]); ok {
+		return worker, true
 	}
 	return nil, false
 }
@@ -44,7 +43,7 @@ func (d *dispatch[T]) Register(uniqID string, batchSize int, AutoCommitDuration 
 		return DuplicateUniqId{uniqID}
 	}
 
-	work := &Worker[T]{
+	worker := &Worker[T]{
 		Key:                uniqID,
 		dispatch:           d,
 		batchSize:          batchSize,
@@ -57,12 +56,29 @@ func (d *dispatch[T]) Register(uniqID string, batchSize int, AutoCommitDuration 
 		exit:               make(chan struct{}),
 	}
 	for _, opt := range opts {
-		opt.apply(work)
+		opt.apply(worker)
 	}
-	work.taskC = make(chan *Task[T], work.bufferSize)
-	d.pool.Store(uniqID, work)
+	worker.taskC = make(chan *Task[T], worker.bufferSize)
+	d.pool.Store(uniqID, worker)
 
-	go work.worker()
+	go worker.worker()
+
+	return nil
+}
+
+func (d *dispatch[T]) UpdateRegister(uniqID string, opts ...Option[T]) error {
+	worker, ok := d.Get(uniqID)
+	if !ok {
+		return ErrInvalidUniqid
+	}
+
+	worker.mu.Lock()
+	defer worker.mu.Unlock()
+
+	for _, opt := range opts {
+		opt.apply(worker)
+	}
+	d.pool.Swap(uniqID, worker)
 
 	return nil
 }
@@ -73,15 +89,15 @@ func (d *dispatch[T]) Unregister(uniqID any) {
 		return
 	}
 
-	work := value.(*Worker[T])
-	work.stop()
+	worker := value.(*Worker[T])
+	worker.stop()
 	d.pool.Delete(uniqID)
 }
 
 func (d *dispatch[T]) UnregisterAll() {
 	d.pool.Range(func(key, value any) bool {
-		if work, ok := value.(*Worker[T]); ok {
-			work.stop()
+		if worker, ok := value.(*Worker[T]); ok {
+			worker.stop()
 			d.pool.Delete(key)
 		}
 
@@ -109,27 +125,27 @@ func (d *dispatch[T]) submit(ctx context.Context, key any, value T) (*Task[T], e
 
 	select {
 	case <-d.exitC:
-		return nil, errors.New("all received exit 2")
+		return nil, ErrDispatchExit
 	case <-task.ctx.Done():
-		return nil, errors.New("context cancel 0")
+		return nil, ErrContextCancel
 	default:
-		work, ok := d.Get(task.Id)
+		worker, ok := d.Get(task.Id)
 		if !ok {
 			return nil, fmt.Errorf("a not register key=%s", task.Id)
 		}
-		if work.closed() {
-			return nil, fmt.Errorf("a queue[%v] is closed", work.Key)
+		if worker.closed() {
+			return nil, fmt.Errorf("a queue[%v] is closed", worker.Key)
 		}
 
 		select {
-		case work.taskC <- task:
+		case worker.taskC <- task:
 			return task, nil
-		case <-work.exit:
-			return nil, errors.New("work received exit")
+		case <-worker.exit:
+			return nil, ErrWorkerExit
 		case <-task.ctx.Done():
-			return nil, errors.New("context cancel 3,")
+			return nil, ErrContextCancel
 		case <-d.exitC:
-			return nil, errors.New("aLL received exit 2")
+			return nil, ErrDispatchExit
 		}
 	}
 }
