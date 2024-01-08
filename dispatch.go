@@ -73,11 +73,10 @@ func (d *dispatch[T]) UpdateRegister(uniqID string, opts ...Option[T]) error {
 	}
 
 	worker.mu.Lock()
-	defer worker.mu.Unlock()
-
 	for _, opt := range opts {
 		opt.apply(worker)
 	}
+	worker.mu.Unlock()
 	d.pool.Swap(uniqID, worker)
 
 	return nil
